@@ -1,0 +1,179 @@
+#define TRIGGER_PIN  14  //D5
+#define ECHO_PIN     12  //D6
+#include<SoftwareSerial.h>
+#include <Servo.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+
+/* Set these to your desired credentials. */
+
+const char *ssid = "Bamboo";  //ENTER YOUR WIFI SETTINGS
+const char *password = "B@mb00123";
+
+
+
+//Web/Server address to read/write from
+
+const char *host = "http://ec2-52-15-116-38.us-east-2.compute.amazonaws.com";   
+
+//https://circuits4you.com website or IP address of server
+
+int period = 500;
+unsigned long time_now = 0;
+String S;
+Servo myservo; 			 // create servo object to control a servo
+SoftwareSerial myserial(D7, D8);       //D7=Rx, D8=Tx.
+long duration, distance;
+int pos = 0; int flag = 1;
+
+String Id1 = "5900D514E77F", Id2 = "5900D499495D", Id3 = "5900D50F6EED";
+String k; int b;
+
+void setup()
+{
+
+  Serial.begin (9600); myserial.begin (9600);
+  pinMode(TRIGGER_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(BUILTIN_LED, OUTPUT);
+  myservo.attach(D2); myservo.write(pos);
+  WiFi.mode(WIFI_OFF);        //Prevents reconnection issue (taking too long to connect)
+
+  delay(1000);
+  WiFi.mode(WIFI_STA);        //This line hides the viewing of ESP as wifi hotspot
+
+
+  	WiFi.begin(ssid, password);     //Connect to your WiFi router
+ 	 Serial.println("");
+
+ 	 Serial.print("Connecting");
+  	// Wait for connection
+
+  	while (WiFi.status() != WL_CONNECTED) {
+    	delay(500);
+    	Serial.print(".");
+ 	 }
+
+	  //If connection successful show IP address in serial monitor
+
+  	Serial.println("");
+ 	Serial.print("Connected to ");
+  	Serial.println(ssid);
+  	Serial.print("IP address: ");
+  	Serial.println(WiFi.localIP());  //IP address assigned to your ESP
+	}
+
+	void loop()
+	{
+  	HTTPClient http;    //Declare object of class HTTPClient
+  	if (millis() > time_now + period)
+  	{
+    	time_now = millis();
+    	if (myserial.available() > 0)
+    	{
+      	if (flag == 1)
+      	{
+        	k = myserial.readString(); Serial.println(k); flag = 0;
+      	}
+
+      	if (k == Id1)
+	{
+
+       	 String Link = "http://ec2-52-15-116-38.us-east-2.compute.amazonaws.com:1111/dustbin/updateInfo?rfid=E77F&dustbinid=1&ultrasonicValue="+S;
+
+        	Serial.println("id1");
+        	digitalWrite(TRIGGER_PIN, LOW);  // Added this line
+        	delayMicroseconds(2); // Added this line
+        	digitalWrite(TRIGGER_PIN, HIGH);
+
+        delayMicroseconds(10); // Added this line
+        digitalWrite(TRIGGER_PIN, LOW);
+        duration = pulseIn(ECHO_PIN, HIGH);
+        distance = (duration / 2) / 29.1;
+        b = distance;
+        S = String(b);
+        Serial.print(distance);
+        Serial.println(" cm");
+        delay(1000);
+        for (pos = 0; pos <= 180; pos += 1)
+        { // goes from 0 degrees to 180 degrees
+          // in steps of 1 degree
+          myservo.write(pos);              // tell servo to go to position in variable 'pos'
+          delay(5);
+        }
+
+        delay(5000);
+        for (pos = 180; pos >= 0; pos -= 1) { // goes from 0 degrees to 180 degrees
+          //in steps of 1 degree
+
+          myservo.write(pos);              // tell servo to go to position in variable 'pos'
+          delay(5);
+        }
+
+        flag = 1;
+        http.begin(Link);     //Specify request destination
+
+
+        int httpCode = http.GET();            //Send the request
+        String payload = http.getString();    //Get the response payload
+        Serial.println(httpCode);   //Print HTTP return code
+        Serial.println(payload);    //Print request response payload
+
+        http.end();  //Close connection
+      }
+      else if (k == Id2)
+      {
+
+        Serial.println("id2");
+        digitalWrite(TRIGGER_PIN, LOW);  // Added this line
+        delayMicroseconds(2); // Added this line
+        digitalWrite(TRIGGER_PIN, HIGH);
+        delayMicroseconds(10); // Added this line
+        digitalWrite(TRIGGER_PIN, LOW);
+        duration = pulseIn(ECHO_PIN, HIGH);
+
+        	distance = (duration / 2) / 29.1;
+       	b = distance;
+        	S = String(b);
+        	Serial.print(distance);
+       	Serial.println(" cm");
+        	delay(1000);
+
+       	 String Link = "http://ec2-52-15-116-38.us-east-2.compute.amazonaws.com:1111/dustbin/updateInfo?rfid=495D&dustbinid=1&ultrasonicValue="+S;
+
+        	for (pos = 0; pos <= 180; pos += 1)
+        	{ // goes from 0 degrees to 180 degrees
+          	// in steps of 1 degree
+          	myservo.write(pos);              // tell servo to go to position in variable 'pos'
+          	delay(5);
+        	}
+
+        	delay(5000);
+        	for (pos = 180; pos >= 0; pos -= 1) { // goes from 0 degrees to 180 degrees
+          	// in steps of 1 degree
+          	myservo.write(pos);              // tell servo to go to position in variable 'pos'
+          	delay(5);
+        	}
+        	flag = 1;
+        	http.begin(Link);     //Specify request destination
+
+        	int httpCode = http.GET();            //Send the request
+        	String payload = http.getString();    //Get the response payload
+
+     	Serial.println(httpCode);   //Print HTTP return code
+     	Serial.println(payload);    //Print request response payload
+        	http.end();  //Close connection
+      	}
+     	 else
+      	{
+        	delay(2000);
+        	flag = 1;
+    	}
+   	}
+
+  }
+
+}
+
